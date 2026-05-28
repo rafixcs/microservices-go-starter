@@ -1,40 +1,29 @@
 package main
 
 import (
-	"context"
 	"log"
-	"ride-sharing/services/trip-service/internal/domain"
-	"ride-sharing/services/trip-service/internal/infrastructure/repository"
-	"ride-sharing/services/trip-service/internal/service"
-	"time"
+	"net/http"
+	"ride-sharing/shared/env"
+)
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+var (
+	httpAddr = env.GetString("HTTP_ADDR", ":8083")
 )
 
 func main() {
+	log.Println("Starting trip service on port", httpAddr)
 
-	ctx := context.Background()
+	mux := http.NewServeMux()
 
-	inmemRepo := repository.NewInmemRepository()
+	mux.HandleFunc("POST /preview", handleCreateTrip)
 
-	svc := service.NewTripService(inmemRepo)
-
-	fare := &domain.RideFareModel{
-		ID:                primitive.NewObjectID(),
-		UserId:            "",
-		PackageSlug:       "",
-		TotalPriceInCents: 0.0,
+	server := &http.Server{
+		Addr:    httpAddr,
+		Handler: mux,
 	}
-	t, err := svc.CreateTrip(ctx, fare)
-	if err != nil {
-		log.Println(err)
+
+	if err := server.ListenAndServe(); err != nil {
+		log.Println("HTTP server error: %v", err)
 		return
 	}
-
-	log.Println(t)
-
-	for {
-		time.Sleep(time.Second)
-	}
-
 }
