@@ -13,17 +13,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type service struct {
+type TripService struct {
 	repo domain.TripRepository
 }
 
-func NewTripService(tripRepo domain.TripRepository) *service {
-	return &service{
+func NewTripService(tripRepo domain.TripRepository) *TripService {
+	return &TripService{
 		repo: tripRepo,
 	}
 }
 
-func (s *service) CreateTrip(ctx context.Context, fare *domain.RideFareModel) (*domain.TripModel, error) {
+func (s *TripService) CreateTrip(ctx context.Context, fare *domain.RideFareModel) (*domain.TripModel, error) {
 	t := &domain.TripModel{
 		ID:       primitive.NewObjectID(),
 		UserId:   fare.UserId,
@@ -34,7 +34,7 @@ func (s *service) CreateTrip(ctx context.Context, fare *domain.RideFareModel) (*
 	return s.repo.CreateTrip(ctx, t)
 }
 
-func (s *service) GetRoute(ctx context.Context, pickup, destination *types.Coordinate) (*types.OsrmApiResponse, error) {
+func (s *TripService) GetRoute(ctx context.Context, pickup, destination *types.Coordinate) (*types.OsrmApiResponse, error) {
 	url := fmt.Sprintf(
 		"http://router.project-osrm.org/route/v1/driving/%f,%f;%f,%f?overview=full&geometries=geojson",
 		pickup.Longitude, pickup.Latitude,
