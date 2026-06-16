@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	grpchandler "ride-sharing/services/trip-service/internal/infrastructure/grpc"
 	"ride-sharing/services/trip-service/internal/infrastructure/repository"
 	"ride-sharing/services/trip-service/internal/service"
 	"ride-sharing/shared/env"
@@ -43,9 +44,6 @@ func loggingMiddleware(next http.Handler) http.Handler {
 var GrpcAddr = ":9093"
 
 func main() {
-	inmemrepo := repository.NewInmemRepository()
-	service := service.NewTripService(inmemrepo)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -53,7 +51,11 @@ func main() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 		<-sigCh
+		cancel()
 	}()
+
+	inmemrepo := repository.NewInmemRepository()
+	tripService := service.NewTripService(inmemrepo)
 
 	lis, err := net.Listen("tcp", GrpcAddr)
 	if err != nil {
@@ -61,11 +63,10 @@ func main() {
 	}
 
 	grpcServer := grpcserver.NewServer()
-	// TODO init grpc handler implementation
+	grpchandler.NewGRPChandler(grpcServer, tripService)
 
 	log.Printf("Starting gRPC server Trip service on port %s", lis.Addr())
 
-	//serverErrors := make(chan error, 1)
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Printf("failed to serve: %v", err)
@@ -73,7 +74,6 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
 	<-ctx.Done()
 	grpcServer.GracefulStop()
 }

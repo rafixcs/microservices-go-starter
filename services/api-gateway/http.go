@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
+	"ride-sharing/services/api-gateway/grpc_clients"
 	"ride-sharing/shared/contracts"
-	"ride-sharing/shared/types"
 )
 
 func handleTripPreview(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +22,29 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := contracts.APIResponse{}
+	log.Println("Teste 000")
+
+	tripService, err := grpc_clients.NewTripServiceClient()
+	if err != nil {
+		log.Println("Teste 001", err)
+		log.Fatal(err)
+	}
+	defer tripService.Close()
+
+	tripPreview, err := tripService.Client.PreviewTrip(r.Context(), reqBody.toProto())
+	if err != nil {
+		log.Printf("[trip-service.handleTripPreview] error: %v", err)
+		http.Error(w, "failed to preview trip", http.StatusInternalServerError)
+		return
+	}
+
+	response := contracts.APIResponse{Data: tripPreview}
+
+	writeJSON(w, http.StatusCreated, response)
+}
+
+/*
+response := contracts.APIResponse{}
 
 	urlPath := tripServiceAddr + "/preview"
 	log.Printf("urlPath: %s", urlPath)
@@ -53,7 +72,7 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 	} else {
 		defer r.Body.Close()
 
-		var respBody types.OsrmApiResponse
+		var respBody tripTypes.OsrmApiResponse
 		if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
 			response.Error = &contracts.APIError{
 				Code:    "43211",
@@ -65,6 +84,4 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 		response.Data = respBody
 		status = http.StatusCreated
 	}
-
-	writeJSON(w, status, response)
-}
+*/
