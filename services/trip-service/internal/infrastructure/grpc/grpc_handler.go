@@ -3,10 +3,13 @@ package grpc
 import (
 	"context"
 	"log"
+	"ride-sharing/services/trip-service/internal/domain"
 	"ride-sharing/services/trip-service/internal/service"
 	pb "ride-sharing/shared/proto/trip"
 	"ride-sharing/shared/types"
+	"strconv"
 
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -47,5 +50,31 @@ func (h *gRPCHandler) PreviewTrip(ctx context.Context, ptr *pb.PreviewTripReques
 	return &pb.PreviewTripResponse{
 		Route:     t.ToProto(),
 		RideFares: []*pb.RideFare{},
+	}, nil
+}
+
+func (h *gRPCHandler) CreateTrip(ctx context.Context, in *pb.CreateTripRequest) (*pb.CreateTripResponse, error) {
+
+	rideFareInCents, err := strconv.ParseFloat(in.RideFare, 64)
+	if err != nil {
+		log.Printf("[gRPC.CreateTrip] Error parsing rideFare: %v", err)
+		return nil, err
+	}
+
+	rideFare := &domain.RideFareModel{
+		ID:                primitive.NewObjectID(),
+		UserId:            in.UserID,
+		PackageSlug:       "van",
+		TotalPriceInCents: rideFareInCents,
+	}
+
+	tripModel, err := h.service.CreateTrip(ctx, rideFare)
+	if err != nil {
+		log.Printf("[gRPC.CreateTrip] Error creating trip: %v", err)
+		return nil, err
+	}
+
+	return &pb.CreateTripResponse{
+		TripID: tripModel.ID.Hex(),
 	}, nil
 }

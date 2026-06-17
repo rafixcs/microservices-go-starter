@@ -22,11 +22,8 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Teste 000")
-
 	tripService, err := grpc_clients.NewTripServiceClient()
 	if err != nil {
-		log.Println("Teste 001", err)
 		log.Fatal(err)
 	}
 	defer tripService.Close()
@@ -39,6 +36,45 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := contracts.APIResponse{Data: tripPreview}
+
+	writeJSON(w, http.StatusCreated, response)
+}
+
+func handleTripStart(w http.ResponseWriter, r *http.Request) {
+	var reqBody startTripRequest
+	defer r.Body.Close()
+
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Failed to parse json data", http.StatusBadRequest)
+		return
+	}
+
+	if reqBody.UserID == "" {
+		http.Error(w, "UserID is required", http.StatusBadRequest)
+		return
+	}
+
+	if reqBody.RideFare == "" {
+		http.Error(w, "RideFare is required", http.StatusBadRequest)
+		return
+	}
+
+	tripService, err := grpc_clients.NewTripServiceClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tripService.Close()
+
+	tripStart, err := tripService.Client.CreateTrip(r.Context(), reqBody.toProto())
+	if err != nil {
+		log.Printf("[trip-service.handleTripStart] Error: %v", err)
+		http.Error(w, "failed to start trip", http.StatusInternalServerError)
+		return
+	}
+
+	response := contracts.APIResponse{
+		Data: tripStart,
+	}
 
 	writeJSON(w, http.StatusCreated, response)
 }
