@@ -38,10 +38,9 @@ func (r *inmemRepository) SaveRideFare(ctx context.Context, f *domain.RideFareMo
 func (r *inmemRepository) GetFare(ctx context.Context, fareID, userID string) (*domain.RideFareModel, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	fare := r.rideFares[fareID]
-	if fare.UserId != userID {
-		return nil, fmt.Errorf("userID does not match to fareID")
+	fare, exits := r.rideFares[fareID]
+	if !exits {
+		return nil, fmt.Errorf("fare does not exist with ID: %s", fareID)
 	}
 
 	return fare, nil

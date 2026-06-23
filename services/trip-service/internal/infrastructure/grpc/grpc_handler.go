@@ -7,7 +7,6 @@ import (
 	"ride-sharing/services/trip-service/internal/service"
 	pb "ride-sharing/shared/proto/trip"
 	"ride-sharing/shared/types"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc"
@@ -53,7 +52,7 @@ func (h *gRPCHandler) PreviewTrip(ctx context.Context, ptr *pb.PreviewTripReques
 		return nil, status.Errorf(codes.Internal, "failed to estimate route fares. err: %v", err)
 	}
 
-	fares, err := h.service.GenerateTripFares(ctx, estimatedFares, ptr.UserID)
+	fares, err := h.service.GenerateTripFares(ctx, estimatedFares, ptr.UserID, t)
 	if err != nil {
 		log.Printf("[gRPCHandler.priviewTrip] Error generating trip fares: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to generate route fares. err: %v", err)
@@ -68,23 +67,30 @@ func (h *gRPCHandler) PreviewTrip(ctx context.Context, ptr *pb.PreviewTripReques
 }
 
 func (h *gRPCHandler) CreateTrip(ctx context.Context, in *pb.CreateTripRequest) (*pb.CreateTripResponse, error) {
-	rideFareInCents, err := strconv.ParseFloat(in.RideFare, 64)
+	//log.Println("teste00")
+	//rideFareInCents, err := strconv.ParseFloat(in.RideFare, 64)
+	//if err != nil {
+	//	log.Printf("[gRPC.CreateTrip] Error parsing rideFare: %v", err)
+	//	return nil, status.Errorf(codes.Internal, "%v", err)
+	//}
+
+	fare, err := h.service.GetAndValidateFare(ctx, in.RideFare, in.UserID)
 	if err != nil {
-		log.Printf("[gRPC.CreateTrip] Error parsing rideFare: %v", err)
-		return nil, err
+		log.Printf("[gRPCHandler.createtrip] failed to create trip: %w", err)
+		return nil, status.Errorf(codes.Internal, "%v", err)
 	}
 
 	rideFare := &domain.RideFareModel{
 		ID:                primitive.NewObjectID(),
 		UserId:            in.UserID,
-		PackageSlug:       "van",
-		TotalPriceInCents: rideFareInCents,
+		PackageSlug:       fare.PackageSlug,
+		TotalPriceInCents: fare.TotalPriceInCents,
 	}
 
 	tripModel, err := h.service.CreateTrip(ctx, rideFare)
 	if err != nil {
 		log.Printf("[gRPC.CreateTrip] Error creating trip: %v", err)
-		return nil, err
+		return nil, status.Errorf(codes.Internal, "%v", err)
 	}
 
 	return &pb.CreateTripResponse{

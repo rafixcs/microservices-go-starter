@@ -25,20 +25,37 @@ func NewTripService(tripRepo domain.TripRepository) *TripService {
 }
 
 func (s *TripService) CreateTrip(ctx context.Context, fare *domain.RideFareModel) (*domain.TripModel, error) {
+
 	t := &domain.TripModel{
 		ID:       primitive.NewObjectID(),
 		UserId:   fare.UserId,
 		Status:   "pending",
 		RideFare: fare,
+		Driver:   domain.TripDriver{},
 	}
 
-	return s.repo.CreateTrip(ctx, t)
+	tripCreated, err := s.repo.CreateTrip(ctx, t)
+	if err != nil {
+		return nil, fmt.Errorf("[tripService.CreateTrip] failed to create trip: %w", err)
+	}
+	return tripCreated, nil
 }
 
 func (s *TripService) GetAndValidateFare(ctx context.Context, fareID, userID string) (*domain.RideFareModel, error) {
 	fare, err := s.repo.GetFare(ctx, fareID, userID)
 	if err != nil {
+		log.Printf("failed to get trip fare: %w", err)
 		return nil, fmt.Errorf("failed to get trip fare: %w", err)
+	}
+
+	if fare == nil {
+		log.Printf("fare not found")
+		return nil, fmt.Errorf("fare not found")
+	}
+
+	if fare.UserId != userID {
+		log.Printf("fare user not valid")
+		return nil, fmt.Errorf("fare user not valid")
 	}
 
 	return fare, nil
@@ -89,7 +106,7 @@ func (s *TripService) EstimatePackagesPriceWithRoute(route *tripTypes.OsrmApiRes
 	return estimatedFares, nil
 }
 
-func (s *TripService) GenerateTripFares(ctx context.Context, rideFares []*domain.RideFareModel, userID string) ([]*domain.RideFareModel, error) {
+func (s *TripService) GenerateTripFares(ctx context.Context, rideFares []*domain.RideFareModel, userID string, route *tripTypes.OsrmApiResponse) ([]*domain.RideFareModel, error) {
 	fares := make([]*domain.RideFareModel, len(rideFares))
 
 	for i, f := range rideFares {
@@ -100,6 +117,7 @@ func (s *TripService) GenerateTripFares(ctx context.Context, rideFares []*domain
 			UserId:            userID,
 			PackageSlug:       f.PackageSlug,
 			TotalPriceInCents: f.TotalPriceInCents,
+			Route:             route,
 		}
 
 		if err := s.repo.SaveRideFare(ctx, fare); err != nil {

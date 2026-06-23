@@ -41,6 +41,7 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTripStart(w http.ResponseWriter, r *http.Request) {
+	log.Println("teste00")
 	var reqBody startTripRequest
 	defer r.Body.Close()
 
@@ -54,7 +55,7 @@ func handleTripStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if reqBody.RideFare == "" {
+	if reqBody.RideFareID == "" {
 		http.Error(w, "RideFare is required", http.StatusBadRequest)
 		return
 	}
@@ -64,6 +65,8 @@ func handleTripStart(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	defer tripService.Close()
+
+	log.Println("teste01")
 
 	tripStart, err := tripService.Client.CreateTrip(r.Context(), reqBody.toProto())
 	if err != nil {
