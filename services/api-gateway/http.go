@@ -41,7 +41,6 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTripStart(w http.ResponseWriter, r *http.Request) {
-	log.Println("teste00")
 	var reqBody startTripRequest
 	defer r.Body.Close()
 
@@ -66,8 +65,6 @@ func handleTripStart(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tripService.Close()
 
-	log.Println("teste01")
-
 	tripStart, err := tripService.Client.CreateTrip(r.Context(), reqBody.toProto())
 	if err != nil {
 		log.Printf("[trip-service.handleTripStart] Error: %v", err)
@@ -80,6 +77,64 @@ func handleTripStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, response)
+}
+
+func handleDriverRegister(w http.ResponseWriter, r *http.Request) {
+	var reqBody driverRegisterRequest
+	defer r.Body.Close()
+
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Failed to parse json data", http.StatusBadRequest)
+		return
+	}
+
+	driverService, err := grpc_clients.NewDriverServiceClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer driverService.Close()
+
+	driver, err := driverService.Client.RegisterDriver(r.Context(), reqBody.toProto())
+	if err != nil {
+		log.Printf("[driver-service.handleDriverRegister] Error: %v", err)
+		http.Error(w, "failed to register driver", http.StatusInternalServerError)
+		return
+	}
+
+	response := contracts.APIResponse{
+		Data: driver,
+	}
+
+	writeJSON(w, http.StatusCreated, response)
+}
+
+func handleDriverUnRegister(w http.ResponseWriter, r *http.Request) {
+	var reqBody driverUnRegisterRequest
+	defer r.Body.Close()
+
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		http.Error(w, "Failed to parse json data", http.StatusBadRequest)
+		return
+	}
+
+	driverService, err := grpc_clients.NewDriverServiceClient()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer driverService.Close()
+
+	driver, err := driverService.Client.UnRegisterDriver(r.Context(), reqBody.toProto())
+	if err != nil {
+		log.Printf("[driver-service.handleDriverRegister] Error: %v", err)
+		http.Error(w, "failed to unregister driver", http.StatusInternalServerError)
+		return
+	}
+
+	response := contracts.APIResponse{
+		Data: driver,
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 /*

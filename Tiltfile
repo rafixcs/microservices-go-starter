@@ -84,3 +84,34 @@ k8s_yaml('./infra/development/k8s/web-deployment.yaml')
 k8s_resource('web', port_forwards=3000, labels="frontend")
 
 ### End of Web Frontend ###
+
+### Driver service ###
+gateway_compile_cmd = 'CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build/driver-service ./services/driver-service'
+if os.name == 'nt':
+  gateway_compile_cmd = './infra/development/docker/api-gateway-build.bat'
+
+local_resource(
+  'driver-service-compile',
+  gateway_compile_cmd,
+  deps=['./services/driver-service', './shared'], labels="compiles")
+
+
+docker_build_with_restart(
+  'ride-sharing/driver-service',
+  '.',
+  entrypoint=['/app/build/driver-service'],
+  dockerfile='./infra/development/docker/driver-service.Dockerfile',
+  only=[
+    './build/driver-service',
+    './shared',
+  ],
+  live_update=[
+    sync('./build', '/app/build'),
+    sync('./shared', '/app/shared'),
+  ],
+)
+
+k8s_yaml('./infra/development/k8s/driver-service-deployment.yaml')
+k8s_resource('driver-service', port_forwards=9094,
+             resource_deps=['driver-service-compile'], labels="services")
+### End of Driver Service ###

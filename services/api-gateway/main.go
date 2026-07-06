@@ -23,6 +23,8 @@ func main() {
 
 	mux.HandleFunc("POST /trip/preview", logRequest(enableCORS(handleTripPreview)))
 	mux.HandleFunc("POST /trip/start", logRequest(enableCORS(handleTripStart)))
+	mux.HandleFunc("POST /driver/register", logRequest(enableCORS(handleDriverRegister)))
+	mux.HandleFunc("DELETE /driver/register", logRequest(enableCORS(handleDriverUnRegister)))
 	mux.HandleFunc("/ws/drivers", handleDriverWebSocket)
 	mux.HandleFunc("/ws/riders", handleRidersWebSocket)
 
