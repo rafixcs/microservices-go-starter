@@ -14,12 +14,13 @@ import (
 	"ride-sharing/services/trip-service/internal/infrastructure/repository"
 	"ride-sharing/services/trip-service/internal/service"
 	"ride-sharing/shared/env"
+	"ride-sharing/shared/messaging"
 
 	grpcserver "google.golang.org/grpc"
 )
 
 var (
-	httpAddr = env.GetString("HTTP_ADDR", ":8083")
+	httpAddr = env.GetString("HTTP_ADDR", ":9093")
 )
 
 type responseWriter struct {
@@ -61,6 +62,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
+
+	// RabbitMQ connection
+	rabbitMQURI := env.GetString("RABBITMQ_URI", "amqp://guest:guest@rabbitmq:5672/")
+	rabbitmq, err := messaging.NewRabbitMQ(rabbitMQURI)
+	if err != nil {
+		log.Fatalf("Failed to connect rabbitmq: %v", err)
+	}
+	defer rabbitmq.Close()
 
 	grpcServer := grpcserver.NewServer()
 	grpchandler.NewGRPChandler(grpcServer, tripService)
