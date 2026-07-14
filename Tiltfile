@@ -76,7 +76,7 @@ docker_build_with_restart(
 )
 
 k8s_yaml('./infra/development/k8s/trip-service-deployment.yaml')
-k8s_resource('trip-service', port_forwards=9093, resource_deps=['trip-service-compile'], labels="services")
+k8s_resource('trip-service', port_forwards=9093, resource_deps=['trip-service-compile', 'rabbitmq'], labels="services")
 
 ### End of Trip Service ###
 ### Web Frontend ###
@@ -120,5 +120,5 @@ docker_build_with_restart(
 
 k8s_yaml('./infra/development/k8s/driver-service-deployment.yaml')
 k8s_resource('driver-service', port_forwards=9094,
-             resource_deps=['driver-service-compile'], labels="services")
+             resource_deps=['driver-service-compile', 'rabbitmq'], labels="services")
 ### End of Driver Service ###
