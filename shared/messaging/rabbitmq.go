@@ -41,7 +41,7 @@ func NewRabbitMQ(uri string) (*RabbitMQ, error) {
 func (r *RabbitMQ) setupExchangesAndQueues() error {
 	_, err := r.Channel.QueueDeclare(
 		"hello", // name
-		false,   // durable
+		true,    // durable
 		false,   // delete when unusedoo
 		false,   // exclusive
 		false,   // no-wait
@@ -62,8 +62,9 @@ func (r *RabbitMQ) PublishMessage(ctx context.Context, routingKey string, messag
 		false,   // mandatory
 		false,   // immediate
 		amqp.Publishing{
-			ContentType: "text/plain",
-			Body:        []byte(message),
+			ContentType:  "text/plain",
+			Body:         []byte(message),
+			DeliveryMode: amqp.Persistent,
 		},
 	)
 }
