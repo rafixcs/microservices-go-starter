@@ -63,6 +63,13 @@ func main() {
 	}
 	defer rabbitmq.Close()
 
+	consumer := NewTripConsumer(rabbitmq)
+	go func() {
+		if err := consumer.Listen(); err != nil {
+			log.Fatalf("Failed to listen to the message: %v", err)
+		}
+	}()
+
 	service := NewService()
 	grpcServer := grpcserver.NewServer()
 	NewGrpcHandler(grpcServer, service)
