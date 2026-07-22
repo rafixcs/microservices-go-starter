@@ -72,6 +72,15 @@ func (r *RabbitMQ) PublishMessage(ctx context.Context, routingKey string, messag
 type MessageHandler func(context.Context, amqp.Delivery) error
 
 func (r *RabbitMQ) ConsumeMessages(queueName string, handler MessageHandler) error {
+	// Set prefetch count to 1 for fair dispatch
+	// This tells RabbitMQ not to give more than one message to a service at a time.
+	// The worker will only get the next message after it has acknowleged the previous one.
+	err := r.Channel.Qos(
+		1,     // prefetchCount: Limit to 1 unacknowleged message per consumer
+		0,     // prefetchSizer: No specific limit on message size
+		false, // global: Apply prefetchCount to each consumer individually
+	)
+
 	msgs, err := r.Channel.Consume(
 		queueName, // queue
 		"",        // consumer
