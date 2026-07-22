@@ -20,7 +20,7 @@ func NewTripConsumer(rmq *messaging.RabbitMQ) *tripEventConsumer {
 
 func (c *tripEventConsumer) Listen() error {
 	return c.rabbitmq.ConsumeMessages("hello", func(ctx context.Context, msg amqp091.Delivery) error {
-		log.Printf("driver received message: %v", msg)
+		log.Printf("driver received message: %s", msg.Body)
 		return nil
 	})
 }
