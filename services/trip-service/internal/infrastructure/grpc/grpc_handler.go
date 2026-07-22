@@ -79,7 +79,7 @@ func (h *gRPCHandler) CreateTrip(ctx context.Context, in *pb.CreateTripRequest) 
 
 	fare, err := h.service.GetAndValidateFare(ctx, in.RideFare, in.UserID)
 	if err != nil {
-		log.Printf("[gRPCHandler.createtrip] failed to create trip: %w", err)
+		log.Printf("[gRPCHandler.createtrip] failed to create trip: %v", err)
 		return nil, status.Errorf(codes.Internal, "%v", err)
 	}
 
@@ -88,6 +88,7 @@ func (h *gRPCHandler) CreateTrip(ctx context.Context, in *pb.CreateTripRequest) 
 		UserId:            in.UserID,
 		PackageSlug:       fare.PackageSlug,
 		TotalPriceInCents: fare.TotalPriceInCents,
+		Route:             fare.Route,
 	}
 
 	tripModel, err := h.service.CreateTrip(ctx, rideFare)
@@ -96,7 +97,7 @@ func (h *gRPCHandler) CreateTrip(ctx context.Context, in *pb.CreateTripRequest) 
 		return nil, status.Errorf(codes.Internal, "%v", err)
 	}
 
-	if err := h.publisher.PublishTripCreated(ctx); err != nil {
+	if err := h.publisher.PublishTripCreated(ctx, tripModel); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to publish the trip created event: %v", err)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	tripTypes "ride-sharing/services/trip-service/pkg/types"
+	pb "ride-sharing/shared/proto/trip"
 )
 
 type TripModel struct {
@@ -14,7 +15,18 @@ type TripModel struct {
 	UserId   string
 	Status   string
 	RideFare *RideFareModel
-	Driver   TripDriver
+	Driver   *pb.TripDriver
+}
+
+func (t *TripModel) ToProto() *pb.Trip {
+	return &pb.Trip{
+		Id:           t.ID.Hex(),
+		UserID:       t.UserId,
+		SelectedFare: t.RideFare.ToProto(),
+		Status:       t.Status,
+		Driver:       t.Driver,
+		Route:        t.RideFare.Route.ToProto(),
+	}
 }
 
 type TripRepository interface {

@@ -13,14 +13,21 @@ type OsrmApiResponse struct {
 }
 
 func (o *OsrmApiResponse) ToProto() *pb.Route {
+	if o == nil || len(o.Routes) == 0 {
+		return &pb.Route{}
+	}
+
 	route := o.Routes[0]
 	geometry := route.Geometry.Coordinates
-	coordinates := make([]*pb.Coordinate, len(geometry))
-	for i, coord := range geometry {
-		coordinates[i] = &pb.Coordinate{
-			Latitude:  coord[0],
-			Longitude: coord[1],
+	coordinates := make([]*pb.Coordinate, 0, len(geometry))
+	for _, coord := range geometry {
+		if len(coord) < 2 {
+			continue
 		}
+		coordinates = append(coordinates, &pb.Coordinate{
+			Latitude:  coord[1],
+			Longitude: coord[0],
+		})
 	}
 
 	return &pb.Route{
@@ -29,8 +36,8 @@ func (o *OsrmApiResponse) ToProto() *pb.Route {
 				Coordinates: coordinates,
 			},
 		},
-		Distance: o.Routes[0].Distance,
-		Duration: o.Routes[0].Duration,
+		Distance: route.Distance,
+		Duration: route.Duration,
 	}
 }
 

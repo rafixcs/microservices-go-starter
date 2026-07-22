@@ -11,6 +11,8 @@ import (
 	tripTypes "ride-sharing/services/trip-service/pkg/types"
 	"ride-sharing/shared/types"
 
+	pb "ride-sharing/shared/proto/trip"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -31,7 +33,7 @@ func (s *TripService) CreateTrip(ctx context.Context, fare *domain.RideFareModel
 		UserId:   fare.UserId,
 		Status:   "pending",
 		RideFare: fare,
-		Driver:   domain.TripDriver{},
+		Driver:   &pb.TripDriver{},
 	}
 
 	tripCreated, err := s.repo.CreateTrip(ctx, t)
@@ -44,7 +46,7 @@ func (s *TripService) CreateTrip(ctx context.Context, fare *domain.RideFareModel
 func (s *TripService) GetAndValidateFare(ctx context.Context, fareID, userID string) (*domain.RideFareModel, error) {
 	fare, err := s.repo.GetFare(ctx, fareID, userID)
 	if err != nil {
-		log.Printf("failed to get trip fare: %w", err)
+		log.Printf("failed to get trip fare: %v", err)
 		return nil, fmt.Errorf("failed to get trip fare: %w", err)
 	}
 
