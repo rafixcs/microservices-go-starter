@@ -53,6 +53,8 @@ func (qc *QueueConsumer) Start() error {
 				}
 			}
 
+			log.Printf("Received message to consume: %+v", msgBody)
+
 			clientMsg := contracts.WSMessage{
 				Type: msg.RoutingKey,
 				Data: payload,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"ride-sharing/services/api-gateway/grpc_clients"
@@ -99,7 +100,34 @@ func handleDriverWebSocket(w http.ResponseWriter, r *http.Request, rabbitmq *mes
 			break
 		}
 
-		log.Printf("Received message: %s", message)
+		type DriverMessage struct {
+			Type string          `json:"type"`
+			Data json.RawMessage `json:"data"`
+		}
+
+		var driverMsg DriverMessage
+		if err := json.Unmarshal(message, &driverMsg); err != nil {
+			log.Printf("Error unmarshaling driver message: %v", err)
+			continue
+		}
+
+		switch driverMsg.Type {
+		case contracts.DriverCmdLocation:
+			// handle driver location update in the future
+			continue
+		case contracts.DriverCmdTripAccept, contracts.DriverCmdTripDecline:
+			// Forward the message to RabbitMQ
+			if err := rabbitmq.PublishMessage(ctx, driverMsg.Type, &contracts.AmqpMessage{
+				OwnerID: userID,
+				Data:    driverMsg.Data,
+			}); err != nil {
+				log.Printf("Error publishing message to RabbitMQ: %v", err)
+			}
+		default:
+			log.Printf("Unknown message type: %s", driverMsg.Type)
+		}
+
+		//log.Printf("Received message: %s", message)
 	}
 }
 
@@ -117,8 +145,23 @@ func handleRidersWebSocket(w http.ResponseWriter, r *http.Request, rabbitmq *mes
 		log.Println("No user ID provided")
 		return
 	}
+	connManager.Add(userID, conn)
 
 	defer connManager.Remove(userID)
+
+	// Initialize queue consumers
+	queues := []string{
+		messaging.NotifyDriverNoDriversFoundQueue,
+	}
+
+	for _, q := range queues {
+		consumer := messaging.NewQueueConsumer(rabbitmq, connManager, q)
+
+		if err := consumer.Start(); err != nil {
+			log.Printf("Failed to start consumer for queue: %s: err: %v", q, err)
+			return
+		}
+	}
 
 	for {
 		_, message, err := conn.ReadMessage()
