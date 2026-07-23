@@ -13,7 +13,7 @@ var (
 	connManager = messaging.NewConnectionManager()
 )
 
-func handleDriverWebSocket(w http.ResponseWriter, r *http.Request) {
+func handleDriverWebSocket(w http.ResponseWriter, r *http.Request, rabbitmq *messaging.RabbitMQ) {
 	conn, err := connManager.Upgrade(w, r)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
@@ -35,6 +35,8 @@ func handleDriverWebSocket(w http.ResponseWriter, r *http.Request) {
 		log.Println("No packageSlug provided")
 		return
 	}
+
+	log.Println(userID)
 
 	// Add connection to manager
 	connManager.Add(userID, conn)
@@ -101,7 +103,7 @@ func handleDriverWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleRidersWebSocket(w http.ResponseWriter, r *http.Request) {
+func handleRidersWebSocket(w http.ResponseWriter, r *http.Request, rabbitmq *messaging.RabbitMQ) {
 	conn, err := connManager.Upgrade(w, r)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)

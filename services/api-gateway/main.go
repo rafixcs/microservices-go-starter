@@ -17,8 +17,6 @@ var (
 	tripServiceAddr = env.GetString("HTTP_TRIP_ADDR", "http://trip-service:8083")
 )
 
-var rabbitmq *messaging.RabbitMQ
-
 func main() {
 	log.Println("Starting API Gateway")
 
@@ -31,12 +29,18 @@ func main() {
 	}
 	defer rabbitmq.Close()
 
+	log.Println("Starting RabbitMQ connection")
+
 	mux.HandleFunc("POST /trip/preview", logRequest(enableCORS(handleTripPreview)))
 	mux.HandleFunc("POST /trip/start", logRequest(enableCORS(handleTripStart)))
 	mux.HandleFunc("POST /driver/register", logRequest(enableCORS(handleDriverRegister)))
 	mux.HandleFunc("DELETE /driver/register", logRequest(enableCORS(handleDriverUnRegister)))
-	mux.HandleFunc("/ws/drivers", handleDriverWebSocket)
-	mux.HandleFunc("/ws/riders", handleRidersWebSocket)
+	mux.HandleFunc("/ws/drivers", func(w http.ResponseWriter, r *http.Request) {
+		handleDriverWebSocket(w, r, rabbitmq)
+	})
+	mux.HandleFunc("/ws/riders", func(w http.ResponseWriter, r *http.Request) {
+		handleRidersWebSocket(w, r, rabbitmq)
+	})
 
 	server := &http.Server{
 		Addr:    httpAddr,
