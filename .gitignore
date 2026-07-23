@@ -61,4 +61,4 @@ build/
 .cursorrules
 
 # Secrets
-secrets.yaml
+#secrets.yaml
