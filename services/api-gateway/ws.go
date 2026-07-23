@@ -76,6 +76,20 @@ func handleDriverWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Initialize queue consumers
+	queues := []string{
+		messaging.DriverCmdTripRequestQueue,
+	}
+
+	for _, q := range queues {
+		consumer := messaging.NewQueueConsumer(rabbitmq, connManager, q)
+
+		if err := consumer.Start(); err != nil {
+			log.Printf("Failed to start consumer for queue: %s: err: %v", q, err)
+			return
+		}
+	}
+
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {

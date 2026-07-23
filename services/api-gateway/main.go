@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"ride-sharing/shared/env"
+	"ride-sharing/shared/messaging"
 	"syscall"
 	"time"
 )
@@ -16,10 +17,19 @@ var (
 	tripServiceAddr = env.GetString("HTTP_TRIP_ADDR", "http://trip-service:8083")
 )
 
+var rabbitmq *messaging.RabbitMQ
+
 func main() {
 	log.Println("Starting API Gateway")
 
 	mux := http.NewServeMux()
+
+	rabbitMQURI := env.GetString("RABBITMQ_URI", "amqp://guest:guest@rabbitmq:5672/")
+	rabbitmq, err := messaging.NewRabbitMQ(rabbitMQURI)
+	if err != nil {
+		log.Fatalf("Failed to connect to rabbitmq: %v", err)
+	}
+	defer rabbitmq.Close()
 
 	mux.HandleFunc("POST /trip/preview", logRequest(enableCORS(handleTripPreview)))
 	mux.HandleFunc("POST /trip/start", logRequest(enableCORS(handleTripStart)))
