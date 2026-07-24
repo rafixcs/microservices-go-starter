@@ -24,17 +24,22 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "125m"
-      env:
-        - name: RABBITMQ_URI
-          valueFrom:
-            secretKeyRef:
-              name: rabbitmq-credentials
-              key: uri
-        - name: JAEGER_ENDPOINT
-          valueFrom:
-            configMapKeyRef:
-              key: JAEGER_ENDPOINT
-              name: app-config
+          env:
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  key: ENVIRONMENT
+                  name: app-config
+            - name: RABBITMQ_URI
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-credentials
+                  key: uri
+            - name: JAEGER_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  key: JAEGER_ENDPOINT
+                  name: app-config
 
 ---
 apiVersion: v1

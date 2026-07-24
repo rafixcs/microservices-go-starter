@@ -27,6 +27,11 @@ spec:
               memory: "128Mi"
               cpu: "200m"
           env:
+            - name: ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: ENVIRONMENT
             - name: STRIPE_SUCCESS_URL
               valueFrom:
                 configMapKeyRef:

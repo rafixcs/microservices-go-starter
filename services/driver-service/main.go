@@ -42,8 +42,26 @@ func loggingMiddleware(next http.Handler) http.Handler {
 var GrpcAddr = ":9094"
 
 func main() {
+	tracerCfg := tracing.Config{
+		ServiceName:    "driver-service",
+		Environment:    env.GetString("ENVIRONMENT", "development"),
+		JaegerEndpoint: env.GetString("JAEGER_ENDPOINT", "http://jaeger:14268/api/traces"),
+	}
+
+	shutdownTracer, err := tracing.InitTracer(tracerCfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize the tracer: %v", err)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	defer func() {
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		if err := shutdownTracer(shutdownCtx); err != nil {
+			log.Printf("Failed to shut down tracer: %v", err)
+		}
+	}()
 
 	go func() {
 		sigCh := make(chan os.Signal, 1)

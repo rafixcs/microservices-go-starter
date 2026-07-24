@@ -1,0 +1,21 @@
+Microservices
+1 - RabbitMQ
+    * queues
+    * exchanges
+    * channels
+    * connections
+2 - Tilt
+    * monitoring k8s
+3 - kubernets
+    * infraestructure for microservices architecture
+    * minikube for local development
+    * k9s tool for exploring k8s components
+4 - gRPC
+5 - HTTP
+6 - WebHook
+7 - Stripe pagyment gateway
+8 - Observability using OpenTelemetry and Jaeger
+9 - Reliaility
+    * troubleshooting errors
+    * dead letter queues
+    * deade letter exchanges

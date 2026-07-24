@@ -9,17 +9,17 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
 type Config struct {
 	ServiceName    string
-	Enviroment     string
+	Environment    string
 	JaegerEndpoint string
 }
 
-func InitTrace(cfg Config) (func(context.Context) error, error) {
+func InitTracer(cfg Config) (func(context.Context) error, error) {
 	// Exporter
 	traceExporter, err := newExporter(cfg.JaegerEndpoint)
 	if err != nil {
@@ -34,14 +34,18 @@ func InitTrace(cfg Config) (func(context.Context) error, error) {
 	otel.SetTracerProvider(traceProvider)
 
 	// Propagator
-	propagator := newPropagator()
-	otel.SetTextMapPropagator(propagator)
+	prop := newPropagator()
+	otel.SetTextMapPropagator(prop)
 
 	return traceProvider.Shutdown, nil
 }
 
 func GetTracer(name string) trace.Tracer {
 	return otel.GetTracerProvider().Tracer(name)
+}
+
+func newExporter(endpoint string) (sdktrace.SpanExporter, error) {
+	return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(endpoint)))
 }
 
 func newPropagator() propagation.TextMapPropagator {
@@ -55,12 +59,11 @@ func newTraceProvider(cfg Config, exporter sdktrace.SpanExporter) (*sdktrace.Tra
 	res, err := resource.New(context.Background(),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(cfg.ServiceName),
-			semconv.DeploymentEnvironmentNameKey.String(cfg.Enviroment),
+			semconv.DeploymentEnvironmentKey.String(cfg.Environment),
 		),
 	)
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resource %w", err)
+		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	traceProvider := sdktrace.NewTracerProvider(
@@ -69,8 +72,4 @@ func newTraceProvider(cfg Config, exporter sdktrace.SpanExporter) (*sdktrace.Tra
 	)
 
 	return traceProvider, nil
-}
-
-func newExporter(endpoint string) (sdktrace.SpanExporter, error) {
-	return jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(endpoint)))
 }
