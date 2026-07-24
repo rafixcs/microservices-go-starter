@@ -9,12 +9,18 @@ import (
 	"ride-sharing/shared/contracts"
 	"ride-sharing/shared/env"
 	"ride-sharing/shared/messaging"
+	"ride-sharing/shared/tracing"
 
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/webhook"
 )
 
+var tracer = tracing.GetTracer("api-gateway")
+
 func handleTripPreview(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracer.Start(r.Context(), "handleTripPreview")
+	defer span.End()
+
 	var reqBody previewTripRequest
 	defer r.Body.Close()
 
@@ -34,7 +40,7 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tripService.Close()
 
-	tripPreview, err := tripService.Client.PreviewTrip(r.Context(), reqBody.toProto())
+	tripPreview, err := tripService.Client.PreviewTrip(ctx, reqBody.toProto())
 	if err != nil {
 		log.Printf("[trip-service.handleTripPreview] error: %v", err)
 		http.Error(w, "failed to preview trip", http.StatusInternalServerError)
@@ -47,6 +53,9 @@ func handleTripPreview(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTripStart(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracer.Start(r.Context(), "handleTripStart")
+	defer span.End()
+
 	var reqBody startTripRequest
 	defer r.Body.Close()
 
@@ -71,7 +80,7 @@ func handleTripStart(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tripService.Close()
 
-	tripStart, err := tripService.Client.CreateTrip(r.Context(), reqBody.toProto())
+	tripStart, err := tripService.Client.CreateTrip(ctx, reqBody.toProto())
 	if err != nil {
 		log.Printf("[trip-service.handleTripStart] Error: %v", err)
 		http.Error(w, "failed to start trip", http.StatusInternalServerError)
@@ -86,6 +95,9 @@ func handleTripStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDriverRegister(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracer.Start(r.Context(), "handleDriverRegister")
+	defer span.End()
+
 	var reqBody driverRegisterRequest
 	defer r.Body.Close()
 
@@ -100,7 +112,7 @@ func handleDriverRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	defer driverService.Close()
 
-	driver, err := driverService.Client.RegisterDriver(r.Context(), reqBody.toProto())
+	driver, err := driverService.Client.RegisterDriver(ctx, reqBody.toProto())
 	if err != nil {
 		log.Printf("[driver-service.handleDriverRegister] Error: %v", err)
 		http.Error(w, "failed to register driver", http.StatusInternalServerError)
@@ -115,6 +127,9 @@ func handleDriverRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDriverUnRegister(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracer.Start(r.Context(), "handleDriverUnRegister")
+	defer span.End()
+
 	var reqBody driverUnRegisterRequest
 	defer r.Body.Close()
 
@@ -129,7 +144,7 @@ func handleDriverUnRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	defer driverService.Close()
 
-	driver, err := driverService.Client.UnRegisterDriver(r.Context(), reqBody.toProto())
+	driver, err := driverService.Client.UnRegisterDriver(ctx, reqBody.toProto())
 	if err != nil {
 		log.Printf("[driver-service.handleDriverRegister] Error: %v", err)
 		http.Error(w, "failed to unregister driver", http.StatusInternalServerError)
@@ -144,6 +159,9 @@ func handleDriverUnRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStripeWebhook(w http.ResponseWriter, r *http.Request, rb *messaging.RabbitMQ) {
+	ctx, span := tracer.Start(r.Context(), "handleDriverUnRegister")
+	defer span.End()
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
@@ -203,7 +221,7 @@ func handleStripeWebhook(w http.ResponseWriter, r *http.Request, rb *messaging.R
 		}
 
 		if err := rb.PublishMessage(
-			r.Context(),
+			ctx,
 			contracts.PaymentEventSuccess,
 			message,
 		); err != nil {

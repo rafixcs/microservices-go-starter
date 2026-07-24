@@ -16,6 +16,7 @@ import (
 	"ride-sharing/services/trip-service/internal/service"
 	"ride-sharing/shared/env"
 	"ride-sharing/shared/messaging"
+	"ride-sharing/shared/tracing"
 
 	grpcserver "google.golang.org/grpc"
 )
@@ -46,8 +47,21 @@ func loggingMiddleware(next http.Handler) http.Handler {
 var GrpcAddr = ":9093"
 
 func main() {
+	// Initialize Tracing
+	tracerCfg := tracing.Config{
+		ServiceName:    "api-gateway",
+		Enviroment:     env.GetString("ENVIROMENT", "development"),
+		JaegerEndpoint: env.GetString("JAEGER_ENDPOINT", "http://jaeger:14268/api/traces"),
+	}
+
+	sh, err := tracing.InitTrace(tracerCfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize the tracer: %v", err)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	defer sh(ctx)
 
 	go func() {
 		sigCh := make(chan os.Signal, 1)
@@ -79,7 +93,7 @@ func main() {
 	driverConsumer := events.NewDriverConsumer(rabbitmq, tripService)
 	go driverConsumer.Listen()
 
-	grpcServer := grpcserver.NewServer()
+	grpcServer := grpcserver.NewServer(tracing.WithTracingInterceptors()...)
 	grpchandler.NewGRPChandler(grpcServer, tripService, publisher)
 
 	log.Printf("Starting gRPC server Trip service on port %s", lis.Addr())

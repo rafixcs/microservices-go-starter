@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"ride-sharing/shared/env"
 	"ride-sharing/shared/messaging"
+	"ride-sharing/shared/tracing"
 	"syscall"
 	"time"
 
@@ -64,7 +65,7 @@ func main() {
 	defer rabbitmq.Close()
 
 	service := NewService()
-	grpcServer := grpcserver.NewServer()
+	grpcServer := grpcserver.NewServer(tracing.WithTracingInterceptors()...)
 	NewGrpcHandler(grpcServer, service)
 
 	log.Printf("Starting gRPC server Trip service on port %s", lis.Addr())

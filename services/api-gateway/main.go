@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"ride-sharing/shared/env"
 	"ride-sharing/shared/messaging"
+	"ride-sharing/shared/tracing"
 	"syscall"
 	"time"
 )
@@ -20,6 +21,22 @@ var (
 func main() {
 	log.Println("Starting API Gateway")
 
+	// Initialize Tracing
+	tracerCfg := tracing.Config{
+		ServiceName:    "driver-service",
+		Enviroment:     env.GetString("ENVIROMENT", "development"),
+		JaegerEndpoint: env.GetString("JAEGER_ENDPOINT", "http://jaeger:14268/api/traces"),
+	}
+
+	sh, err := tracing.InitTrace(tracerCfg)
+	if err != nil {
+		log.Fatalf("Failed to initialize the tracer: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	defer sh(ctx)
+
 	mux := http.NewServeMux()
 
 	rabbitMQURI := env.GetString("RABBITMQ_URI", "amqp://guest:guest@rabbitmq:5672/")
@@ -31,19 +48,19 @@ func main() {
 
 	log.Println("Starting RabbitMQ connection")
 
-	mux.HandleFunc("POST /trip/preview", logRequest(enableCORS(handleTripPreview)))
-	mux.HandleFunc("POST /trip/start", logRequest(enableCORS(handleTripStart)))
-	mux.HandleFunc("POST /driver/register", logRequest(enableCORS(handleDriverRegister)))
-	mux.HandleFunc("DELETE /driver/register", logRequest(enableCORS(handleDriverUnRegister)))
-	mux.HandleFunc("/ws/drivers", func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /trip/preview", tracing.WrapHandlerfunc(logRequest(enableCORS(handleTripPreview)), "/trip/preview"))
+	mux.Handle("POST /trip/start", tracing.WrapHandlerfunc(logRequest(enableCORS(handleTripStart)), "/trip/start"))
+	mux.Handle("POST /driver/register", tracing.WrapHandlerfunc(logRequest(enableCORS(handleDriverRegister)), "/driver/register"))
+	mux.Handle("DELETE /driver/register", tracing.WrapHandlerfunc(logRequest(enableCORS(handleDriverUnRegister)), "/driver/register"))
+	mux.Handle("/ws/drivers", tracing.WrapHandlerfunc(func(w http.ResponseWriter, r *http.Request) {
 		handleDriverWebSocket(w, r, rabbitmq)
-	})
-	mux.HandleFunc("/ws/riders", func(w http.ResponseWriter, r *http.Request) {
+	}, "/ws/drivers"))
+	mux.Handle("/ws/riders", tracing.WrapHandlerfunc(func(w http.ResponseWriter, r *http.Request) {
 		handleRidersWebSocket(w, r, rabbitmq)
-	})
-	mux.HandleFunc("/webhook/stripe", func(w http.ResponseWriter, r *http.Request) {
+	}, "/ws/riders"))
+	mux.Handle("/webhook/stripe", tracing.WrapHandlerfunc(func(w http.ResponseWriter, r *http.Request) {
 		handleStripeWebhook(w, r, rabbitmq)
-	})
+	}, "/webhook/stripe"))
 
 	server := &http.Server{
 		Addr:    httpAddr,
