@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"ride-sharing/services/trip-service/internal/domain"
-	"sync"
-
 	pbd "ride-sharing/shared/proto/driver"
 	pb "ride-sharing/shared/proto/trip"
 )
@@ -13,8 +11,6 @@ import (
 type inmemRepository struct {
 	trips     map[string]*domain.TripModel
 	rideFares map[string]*domain.RideFareModel
-
-	mu sync.Mutex
 }
 
 func NewInmemRepository() *inmemRepository {
@@ -22,31 +18,6 @@ func NewInmemRepository() *inmemRepository {
 		trips:     make(map[string]*domain.TripModel),
 		rideFares: make(map[string]*domain.RideFareModel),
 	}
-}
-
-func (r *inmemRepository) CreateTrip(ctx context.Context, trip *domain.TripModel) (*domain.TripModel, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.trips[trip.ID.Hex()] = trip
-	return r.trips[trip.ID.Hex()], nil
-}
-
-func (r *inmemRepository) SaveRideFare(ctx context.Context, f *domain.RideFareModel) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.rideFares[f.ID.Hex()] = f
-	return nil
-}
-
-func (r *inmemRepository) GetFare(ctx context.Context, fareID, userID string) (*domain.RideFareModel, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	fare, exits := r.rideFares[fareID]
-	if !exits {
-		return nil, fmt.Errorf("fare does not exist with ID: %s", fareID)
-	}
-
-	return fare, nil
 }
 
 func (r *inmemRepository) GetTripByID(ctx context.Context, id string) (*domain.TripModel, error) {
@@ -73,5 +44,24 @@ func (r *inmemRepository) UpdateTrip(ctx context.Context, tripID string, status 
 			ProfilePicture: driver.ProfilePicture,
 		}
 	}
+	return nil
+}
+
+func (r *inmemRepository) GetRideFareByID(ctx context.Context, id string) (*domain.RideFareModel, error) {
+	fare, exist := r.rideFares[id]
+	if !exist {
+		return nil, fmt.Errorf("fare does not exist with ID: %s", id)
+	}
+
+	return fare, nil
+}
+
+func (r *inmemRepository) CreateTrip(ctx context.Context, trip *domain.TripModel) (*domain.TripModel, error) {
+	r.trips[trip.ID.Hex()] = trip
+	return trip, nil
+}
+
+func (r *inmemRepository) SaveRideFare(ctx context.Context, f *domain.RideFareModel) error {
+	r.rideFares[f.ID.Hex()] = f
 	return nil
 }

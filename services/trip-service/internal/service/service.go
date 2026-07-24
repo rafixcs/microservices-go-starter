@@ -45,7 +45,7 @@ func (s *TripService) CreateTrip(ctx context.Context, fare *domain.RideFareModel
 }
 
 func (s *TripService) GetAndValidateFare(ctx context.Context, fareID, userID string) (*domain.RideFareModel, error) {
-	fare, err := s.repo.GetFare(ctx, fareID, userID)
+	fare, err := s.repo.GetRideFareByID(ctx, fareID)
 	if err != nil {
 		log.Printf("failed to get trip fare: %v", err)
 		return nil, fmt.Errorf("failed to get trip fare: %w", err)

@@ -14,6 +14,7 @@ import (
 	grpchandler "ride-sharing/services/trip-service/internal/infrastructure/grpc"
 	"ride-sharing/services/trip-service/internal/infrastructure/repository"
 	"ride-sharing/services/trip-service/internal/service"
+	"ride-sharing/shared/db"
 	"ride-sharing/shared/env"
 	"ride-sharing/shared/messaging"
 	"ride-sharing/shared/tracing"
@@ -63,6 +64,15 @@ func main() {
 	defer cancel()
 	defer sh(ctx)
 
+	mongoClient, err := db.NewMongoClient(ctx, db.NewMongoDefaultConfig())
+	if err != nil {
+		log.Fatalf("Failed to intialiaze MongoBD, err: %v", err)
+	}
+	defer mongoClient.Disconnect(ctx)
+
+	mongoDb := db.GetDatabase(mongoClient, db.NewMongoDefaultConfig())
+	log.Printf("Using MongoDB database %s", mongoDb.Name())
+
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -70,8 +80,9 @@ func main() {
 		cancel()
 	}()
 
-	inmemrepo := repository.NewInmemRepository()
-	tripService := service.NewTripService(inmemrepo)
+	//inmemrepo := repository.NewInmemRepository()
+	mongoDBRepo := repository.NewMongoRepository(mongoDb)
+	tripService := service.NewTripService(mongoDBRepo)
 
 	lis, err := net.Listen("tcp", GrpcAddr)
 	if err != nil {
